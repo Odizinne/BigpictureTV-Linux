@@ -3,9 +3,6 @@
 Python daemon to automate switching from PC to TV when launching Steam in big picture mode.  
 Supports X11, gnome-wayland and plasma-wayland.
 
-It will switch display using provided adapters with launch arguments.
-Also it will switch audio devices on the one you provided with launch arguments.
-
 This script will reset your system to desktop mode at exit.
 
 ![image](https://github.com/Odizinne/Bigpicture-Detector/assets/102679854/4c783923-aecf-4944-aaa6-82570a6dcf10)
