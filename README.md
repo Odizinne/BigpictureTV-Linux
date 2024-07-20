@@ -1,4 +1,4 @@
-# Bigpicture-Detector
+# BigpictureTV-Linux
 
 Python daemon to automate switching from PC to TV when launching Steam in big picture mode.  
 Supports X11, gnome-wayland and plasma-wayland.
@@ -7,11 +7,6 @@ This script will reset your system to desktop mode at exit.
 
 ![image](https://github.com/Odizinne/Bigpicture-Detector/assets/102679854/4c783923-aecf-4944-aaa6-82570a6dcf10)
 
-## Primary use case
-
-This script is meant to be ran when using single monitor and TV plugged in.  
-Using a dual screen plus a TV might lead to random result.  
-I made this script for my own use, and I'll not address issue about other configuration than this one.
 
 ## Dependencies
 
@@ -22,8 +17,6 @@ I made this script for my own use, and I'll not address issue about other config
 
 ## Usage
 
-For first run you should do `./bigpicture-detector --settings`
-
 Both audio settings should be filled with device description. You can get it from `pactl list sinks | grep device.description`
 
 Output should look like this:
@@ -33,15 +26,8 @@ flora@fedora:~/Projects$ pactl list sinks | grep device.description
         device.description = "CORSAIR VOID ELITE Wireless Gaming Dongle"
 ```
 
-If you plan to switch to HDMI audio, be sure to turn your HDMI monitor before running this command, else it wont be listed here.
+If you plan to switch to HDMI audio, be sure to turn on your HDMI monitor before running this command, else it wont be listed here.
 
 I do not recommand going below 100ms for check rate. If unsure, do not edit.
 
-when everything is done, close the app, and launch without arguments. I recommend to setup a systemd service (set and forget).
 
-## To do
-
-Will probably do one day but low priority
-
-- Add feature to disable audio switching.
-- PyQt gui to create / manage settings and avoid using launch arguments.
