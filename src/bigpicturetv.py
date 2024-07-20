@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
+
 import subprocess
-import time
 import re
 import atexit
 import os
@@ -7,10 +8,9 @@ import sys
 import json
 import logging
 import shutil
-import threading
 from PyQt6.QtWidgets import QMainWindow, QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import pyqtSignal, QObject
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 from design import Ui_MainWindow
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".config/BigPictureTV/settings.json")
 ICON_DESKTOP = "icons/icon_desktop.png"
 ICON_GAMEMODE = "icons/icon_gamemode.png"
-
+AUTOSTART_FILE = os.path.join(os.path.expanduser("~"), ".config/autostart/bigpicturetv.desktop")
 
 class Communicator(QObject):
     detection_status_changed = pyqtSignal(bool)
@@ -81,8 +81,11 @@ class SettingsWindow(QMainWindow):
         self.communicator = Communicator()
         self.communicator.detection_status_changed.connect(self.update_detection_status)
 
-        self.main_loop_thread = threading.Thread(target=self.start_main_loop, daemon=True)
-        self.main_loop_thread.start()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.monitor_window_changes)
+        self.timer.start(self.settings["checkRate"])
+
+        atexit.register(self.cleanup)
 
     def update_detection_status(self, status):
         self.detection_active = status
@@ -157,6 +160,7 @@ class SettingsWindow(QMainWindow):
         self.ui.desktopAdapter.textChanged.connect(self.save_settings)
         self.ui.disableAudiobox.stateChanged.connect(self.on_disableAudioBox_stateChanged)
         self.ui.bigPictureKeywords.textChanged.connect(self.save_settings)
+        self.ui.startupBox.stateChanged.connect(self.on_startUpBox_stateChanged)
 
     def toggle_audio_settings(self, state):
         self.ui.gamemodeAudio.setEnabled(not state)
@@ -168,11 +172,28 @@ class SettingsWindow(QMainWindow):
         self.toggle_audio_settings(self.ui.disableAudiobox.isChecked())
         self.save_settings()
 
+    def on_startUpBox_stateChanged(self):
+        if self.ui.startupBox.isChecked():
+            autostart_dir = os.path.dirname(AUTOSTART_FILE)
+            script_folder = os.path.dirname(__file__)
+            os.makedirs(autostart_dir, exist_ok=True)
+            with open(AUTOSTART_FILE, 'w') as f:
+                f.write("[Desktop Entry]\n")
+                f.write("Type=Application\n")
+                f.write("Name=BigPictureTV\n")
+                f.write(f"Path={script_folder}\n")
+                f.write(f"Exec={sys.executable} {__file__}\n")
+                logger.info("Autostart enabled.")
+        else:
+            if os.path.exists(AUTOSTART_FILE):
+                os.remove(AUTOSTART_FILE)
+                logger.info("Autostart disabled.")
+
     def check_window_names(self):
         result = subprocess.run(['wmctrl', '-l'], stdout=subprocess.PIPE)
         windows = result.stdout.decode('utf-8')
 
-        keywords = self.ui.bigPictureKeywords.text().split()
+        keywords = [keyword.lower() for keyword in self.ui.bigPictureKeywords.text().split()]
 
         for line in windows.splitlines():
             parts = line.split(None, 3)
@@ -241,6 +262,8 @@ class SettingsWindow(QMainWindow):
         self.ui.disableAudiobox.setChecked(self.settings["disableAudio"])
         self.toggle_audio_settings(self.ui.disableAudiobox.isChecked())
 
+        self.ui.startupBox.setChecked(os.path.exists(AUTOSTART_FILE))
+
     def save_settings(self):
         settings = {
             "bigPictureKeywords": self.ui.bigPictureKeywords.text().split(),
@@ -271,20 +294,15 @@ class SettingsWindow(QMainWindow):
         
         return settings
 
-    def start_main_loop(self):
-        self.monitor_window_changes()
-
     def monitor_window_changes(self):
-        while True:
-            if self.detection_active:
-                if self.check_window_names():
-                    if not (self.gamemode and self.gamemode.is_active()):
-                        self.create_and_activate_modes()
-                else:
-                    if not (self.desktopmode and self.desktopmode.is_active()):
-                        self.create_and_activate_modes()
-                self.update_tray_menu()
-            time.sleep(self.settings["checkRate"] / 1000)
+        if self.detection_active:
+            if self.check_window_names():
+                if not (self.gamemode and self.gamemode.is_active()):
+                    self.create_and_activate_modes()
+            else:
+                if not (self.desktopmode and self.desktopmode.is_active()):
+                    self.create_and_activate_modes()
+            self.update_tray_menu()
 
     def create_and_activate_modes(self):
         session_type = self.get_session_type()
@@ -329,6 +347,10 @@ class SettingsWindow(QMainWindow):
             self.desktopmode.activate()
             self.gamemode.deactivate()
 
+    def cleanup(self):
+        logger.info("Cleaning up and switching to desktop mode before exit.")
+        if self.desktopmode and not self.desktopmode.is_active():
+            self.desktopmode.activate()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
