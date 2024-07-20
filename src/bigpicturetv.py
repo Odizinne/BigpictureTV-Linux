@@ -16,7 +16,10 @@ from design import Ui_MainWindow
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".config/BigPictureTV/settings.json")
+SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".config/BigPictureTV/settings.json")
+ICON_DESKTOP = "icons/icon_desktop.png"
+ICON_GAMEMODE = "icons/icon_gamemode.png"
+
 
 class Communicator(QObject):
     detection_status_changed = pyqtSignal(bool)
@@ -74,8 +77,6 @@ class SettingsWindow(QMainWindow):
 
         self.gamemode = None
         self.desktopmode = None
-        self.first_run = False
-
         self.detection_active = True
         self.communicator = Communicator()
         self.communicator.detection_status_changed.connect(self.update_detection_status)
@@ -89,7 +90,7 @@ class SettingsWindow(QMainWindow):
 
     def create_tray_icon(self):
         tray_icon = QSystemTrayIcon(self)
-        tray_icon.setIcon(QIcon("icons/steamos-logo.png"))
+        tray_icon.setIcon(QIcon(ICON_DESKTOP))
         tray_icon.setContextMenu(self.create_menu())
         tray_icon.show()
         return tray_icon
@@ -111,7 +112,6 @@ class SettingsWindow(QMainWindow):
         self.pause_resume_action.triggered.connect(self.toggle_detection)
         menu.addAction(self.pause_resume_action)
 
-
         settings_action = QAction('Settings', menu)
         settings_action.triggered.connect(self.show)
         menu.addAction(settings_action)
@@ -128,10 +128,12 @@ class SettingsWindow(QMainWindow):
         else:
             self.pause_resume_action.setText('Resume Detection')
 
-        if self.gamemode.is_active():
+        if self.gamemode and self.gamemode.is_active():
             self.current_mode_action.setText('Current Mode: Game Mode')
-        elif self.desktopmode.is_active():
+            self.tray_icon.setIcon(QIcon(ICON_GAMEMODE))
+        elif self.desktopmode and self.desktopmode.is_active():
             self.current_mode_action.setText('Current Mode: Desktop Mode')
+            self.tray_icon.setIcon(QIcon(ICON_DESKTOP))
         else:
             self.current_mode_action.setText('Current Mode: Unknown')
 
@@ -153,8 +155,18 @@ class SettingsWindow(QMainWindow):
         self.ui.desktopAudio.textChanged.connect(self.save_settings)
         self.ui.gamemodeAdapter.textChanged.connect(self.save_settings)
         self.ui.desktopAdapter.textChanged.connect(self.save_settings)
-        self.ui.disableAudiobox.stateChanged.connect(self.save_settings)
+        self.ui.disableAudiobox.stateChanged.connect(self.on_disableAudioBox_stateChanged)
         self.ui.bigPictureKeywords.textChanged.connect(self.save_settings)
+
+    def toggle_audio_settings(self, state):
+        self.ui.gamemodeAudio.setEnabled(not state)
+        self.ui.desktopAudio.setEnabled(not state)
+        self.ui.desktopAudioLabel.setEnabled(not state)
+        self.ui.gamemodeAudioLabel.setEnabled(not state)
+
+    def on_disableAudioBox_stateChanged(self):
+        self.toggle_audio_settings(self.ui.disableAudiobox.isChecked())
+        self.save_settings()
 
     def check_window_names(self):
         result = subprocess.run(['wmctrl', '-l'], stdout=subprocess.PIPE)
@@ -170,12 +182,6 @@ class SettingsWindow(QMainWindow):
                     return True
 
         return False
-
-    def read_sunshine_status(self):
-        home_dir = os.path.expanduser("~")
-        status_file = os.path.join(home_dir, ".local/share/sunshine_status/status.txt")
-
-        return os.path.exists(status_file)
 
     def get_session_type(self):
         session_type = os.getenv("XDG_SESSION_TYPE").lower()
@@ -219,8 +225,8 @@ class SettingsWindow(QMainWindow):
             return [randr_command, f'output.{output_screen}.enable', f'output.{off_screen}.disable']
 
     def load_settings(self):
-        if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH, 'r') as f:
+        if os.path.exists(SETTINGS_PATH):
+            with open(SETTINGS_PATH, 'r') as f:
                 return json.load(f)
         else:
             return self.create_default_settings()
@@ -233,6 +239,7 @@ class SettingsWindow(QMainWindow):
         self.ui.gamemodeAdapter.setText(self.settings["gamemodeAdapter"])
         self.ui.desktopAdapter.setText(self.settings["desktopAdapter"])
         self.ui.disableAudiobox.setChecked(self.settings["disableAudio"])
+        self.toggle_audio_settings(self.ui.disableAudiobox.isChecked())
 
     def save_settings(self):
         settings = {
@@ -244,46 +251,61 @@ class SettingsWindow(QMainWindow):
             "desktopAdapter": self.ui.desktopAdapter.text(),
             "disableAudio": self.ui.disableAudiobox.isChecked()
         }
-        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-        with open(CONFIG_PATH, 'w') as f:
+        os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
+        with open(SETTINGS_PATH, 'w') as f:
             json.dump(settings, f, indent=4)
-            logger.info("Settings saved to %s", CONFIG_PATH)
-
-        self.initialize_modes()
+            logger.info("Settings saved to %s", SETTINGS_PATH)
 
     def create_default_settings(self):
-        self.first_run = True
+        self.show()
         settings = {
-            "bigPictureKeywords": ["Steam", "mode", "Big", "Picture"],
+            "bigPictureKeywords": ["Steam", "Big", "Picture", "mode"],
             "checkRate": 1000,
-            "gamemodeAudio": "gamemode audio output description",
-            "desktopAudio": "desktop audio output description",
-            "gamemodeAdapter": "gamemode adapter name",
-            "desktopAdapter": "Desktop adapter name",
+            "gamemodeAudio": "",
+            "desktopAudio": "",
+            "gamemodeAdapter": "",
+            "desktopAdapter": "",
             "disableAudio": False
         }
         self.save_settings()
         
         return settings
 
-    def initialize_modes(self):
-        checkRate = self.ui.checkRate.value()
+    def start_main_loop(self):
+        self.monitor_window_changes()
+
+    def monitor_window_changes(self):
+        while True:
+            if self.detection_active:
+                if self.check_window_names():
+                    if not (self.gamemode and self.gamemode.is_active()):
+                        self.create_and_activate_modes()
+                else:
+                    if not (self.desktopmode and self.desktopmode.is_active()):
+                        self.create_and_activate_modes()
+                self.update_tray_menu()
+            time.sleep(self.settings["checkRate"] / 1000)
+
+    def create_and_activate_modes(self):
+        session_type = self.get_session_type()
+        randr_command = self.get_randr_command()
+        self.validate_commands(['pactl', 'wmctrl', randr_command])
+
         external_screen = self.ui.gamemodeAdapter.text()
         internal_screen = self.ui.desktopAdapter.text()
         gamemode_audio = self.ui.gamemodeAudio.text()
         desktop_audio = self.ui.desktopAudio.text()
         disable_audio = self.ui.disableAudiobox.isChecked()
+        checkRate = self.ui.checkRate.value()
+        bigpicture_keywords = self.ui.bigPictureKeywords.text().split()
 
-        logger.info(f"audio switching: {disable_audio}")
-        logger.info(f"window check rate (ms): {checkRate}")
-        logger.info(f"gamemode screen: {external_screen}")
-        logger.info(f"desktop screen: {internal_screen}")
-        logger.info(f"gamemode audio output: {gamemode_audio}")
-        logger.info(f"desktop audio output: {desktop_audio}")
-
-        session_type = self.get_session_type()
-        randr_command = self.get_randr_command()
-        self.validate_commands(['pactl', 'wmctrl', randr_command])
+        logger.info(f"PARAM: Detecting: {bigpicture_keywords}")
+        logger.info(f"PARAM: audio switching: {not disable_audio}")
+        logger.info(f"PARAM: window check rate (ms): {checkRate}")
+        logger.info(f"PARAM: gamemode screen: {external_screen}")
+        logger.info(f"PARAM: desktop screen: {internal_screen}")
+        logger.info(f"PARAM: gamemode audio output: {gamemode_audio}")
+        logger.info(f"PARAM: desktop audio output: {desktop_audio}")
 
         self.gamemode = Mode(
             self.generate_screen_command(randr_command, external_screen, internal_screen, session_type),
@@ -300,32 +322,15 @@ class SettingsWindow(QMainWindow):
             disable_audio
         )
 
-        atexit.register(self.desktopmode.activate)
+        if self.check_window_names():
+            self.gamemode.activate()
+            self.desktopmode.deactivate()
+        else:
+            self.desktopmode.activate()
+            self.gamemode.deactivate()
 
-    def start_main_loop(self):
-        self.initialize_modes()
-        self.monitor_window_changes()
-
-    def monitor_window_changes(self):
-        try:
-            while True:
-                if self.detection_active:
-                    if self.check_window_names() and not self.read_sunshine_status():
-                        if not self.gamemode.is_active():
-                            self.gamemode.activate()
-                            self.desktopmode.deactivate()
-                    else:
-                        if not self.desktopmode.is_active():
-                            self.desktopmode.activate()
-                            self.gamemode.deactivate()
-                    self.update_tray_menu()
-                time.sleep(self.settings["checkRate"] / 1000)
-        except KeyboardInterrupt:
-            logger.info("Exiting.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     BigPictureTV = SettingsWindow()
-    if BigPictureTV.first_run:
-        BigPictureTV.show()
     sys.exit(app.exec())
