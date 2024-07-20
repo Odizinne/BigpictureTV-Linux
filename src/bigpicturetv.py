@@ -16,7 +16,7 @@ from design import Ui_MainWindow
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".config/bigpicture-detector/settings.json")
+CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".config/BigPictureTV/settings.json")
 
 class Communicator(QObject):
     detection_status_changed = pyqtSignal(bool)
@@ -65,7 +65,7 @@ class SettingsWindow(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowTitle("BigPicture-Detector - Settings")
+        self.setWindowTitle("BigPictureTV - Settings")
         self.setFixedSize(self.size())
         self.settings = self.load_settings()
         self.apply_settings()
@@ -74,6 +74,7 @@ class SettingsWindow(QMainWindow):
 
         self.gamemode = None
         self.desktopmode = None
+        self.first_run = False
 
         self.detection_active = True
         self.communicator = Communicator()
@@ -100,6 +101,10 @@ class SettingsWindow(QMainWindow):
         self.current_mode_action.setEnabled(False)
         menu.addAction(self.current_mode_action)
 
+        self.detection_status = QAction('Detection State: Active', menu)
+        self.detection_status.setEnabled(False)
+        menu.addAction(self.detection_status)
+
         menu.addSeparator()
 
         self.pause_resume_action = QAction('Pause Detection', menu)
@@ -118,13 +123,11 @@ class SettingsWindow(QMainWindow):
         return menu
 
     def update_tray_menu(self):
-        # Update pause/resume action text
         if self.detection_active:
             self.pause_resume_action.setText('Pause Detection')
         else:
             self.pause_resume_action.setText('Resume Detection')
 
-        # Update current mode text
         if self.gamemode.is_active():
             self.current_mode_action.setText('Current Mode: Game Mode')
         elif self.desktopmode.is_active():
@@ -132,11 +135,10 @@ class SettingsWindow(QMainWindow):
         else:
             self.current_mode_action.setText('Current Mode: Unknown')
 
-        # Update tooltip
         if self.detection_active:
-            self.tray_icon.setToolTip("Detection State: Active")
+            self.detection_status.setText('Detection State: Active')
         else:
-            self.tray_icon.setToolTip("Detection State: Paused")
+            self.detection_status.setText('Detection State: Paused')
 
     def toggle_detection(self):
         self.communicator.detection_status_changed.emit(not self.detection_active)
@@ -250,6 +252,7 @@ class SettingsWindow(QMainWindow):
         self.initialize_modes()
 
     def create_default_settings(self):
+        self.first_run = True
         settings = {
             "bigPictureKeywords": ["Steam", "mode", "Big", "Picture"],
             "checkRate": 1000,
@@ -260,6 +263,7 @@ class SettingsWindow(QMainWindow):
             "disableAudio": False
         }
         self.save_settings()
+        
         return settings
 
     def initialize_modes(self):
@@ -321,6 +325,7 @@ class SettingsWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = SettingsWindow()
-    window.show()
+    BigPictureTV = SettingsWindow()
+    if BigPictureTV.first_run:
+        BigPictureTV.show()
     sys.exit(app.exec())
