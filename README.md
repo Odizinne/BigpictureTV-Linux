@@ -3,9 +3,7 @@
 Python daemon to automate switching from PC to TV when launching Steam in big picture mode.  
 Supports X11, gnome-wayland and plasma-wayland.
 
-This script will reset your system to desktop mode at exit.
-
-![image](https://github.com/Odizinne/Bigpicture-Detector/assets/102679854/4c783923-aecf-4944-aaa6-82570a6dcf10)
+![image](assets/screenshot.png)
 
 
 ## Dependencies
@@ -14,6 +12,12 @@ This script will reset your system to desktop mode at exit.
 - `pactl` for audio device manipulation
 - `xrandr` for screen detection and manipulation under X11
 - `gnome-randr` (work only with [my custom version](https://github.com/Odizinne/gnome-randr-py)) in path for gnome-wayland support
+- `PyQt6`
+
+## Installation
+
+- Download [latest release]()
+- run `install.sh`
 
 ## Usage
 
