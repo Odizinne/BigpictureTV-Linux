@@ -10,16 +10,24 @@ import logging
 import shutil
 from PyQt6.QtWidgets import QMainWindow, QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import pyqtSignal, QObject, QTimer
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer, QSharedMemory
 from design import Ui_MainWindow
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+AUTOSTART_FILE = os.path.join(os.path.expanduser("~"), ".config/autostart/bigpicturetv.desktop")
 SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".config/BigPictureTV/settings.json")
 ICON_DESKTOP = "icons/icon_desktop.png"
 ICON_GAMEMODE = "icons/icon_gamemode.png"
-AUTOSTART_FILE = os.path.join(os.path.expanduser("~"), ".config/autostart/bigpicturetv.desktop")
+
+def single_instance_check():
+    shared_memory = QSharedMemory('BigPictureTV')
+
+    if shared_memory.attach() or not shared_memory.create(1):
+        sys.exit(1)
+
+    return shared_memory
 
 class Communicator(QObject):
     detection_status_changed = pyqtSignal(bool)
@@ -354,5 +362,6 @@ class SettingsWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    shared_memory = single_instance_check()
     BigPictureTV = SettingsWindow()
     sys.exit(app.exec())
