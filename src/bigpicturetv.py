@@ -213,15 +213,21 @@ class SettingsWindow(QMainWindow):
         return False
 
     def get_session_type(self):
-        session_type = os.getenv("XDG_SESSION_TYPE").lower()
+        session_type = os.getenv("XDG_SESSION_TYPE", "").lower()
+        print(session_type)
+
         if session_type == "x11":
             return "x11"
         elif session_type == "wayland":
-            desktop_session = os.getenv("XDG_CURRENT_DESKTOP").lower()
-            if desktop_session == "gnome":
+            desktop_session = os.getenv("XDG_CURRENT_DESKTOP", "").lower()
+
+            if desktop_session in ["gnome", "ubuntu:gnome", "unity"]:
                 return "gnome-wayland"
-            elif desktop_session == "kde":
+            elif desktop_session in ["kde", "plasma"]:
                 return "kde-wayland"
+            else:
+                return "unknown-wayland"
+
         else:
             return "Unsupported"
 
