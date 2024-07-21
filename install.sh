@@ -40,11 +40,7 @@ fi
 mkdir -p "$DEST_DIR"
 cp -r "$SRC_DIR/src/"* "$DEST_DIR/"
 
-if [[ "$XDG_CURRENT_DESKTOP" == "GNOME" || "$XDG_CURRENT_DESKTOP" == "ubuntu:GNOME" || "$XDG_CURRENT_DESKTOP" == "Unity" ]]; then
-    EXEC_CMD="env QT_QPA_PLATFORM=xcb $DEST_DIR/bigpicturetv.py"
-else
-    EXEC_CMD="$DEST_DIR/bigpicturetv.py"
-fi
+EXEC_CMD="$DEST_DIR/bigpicturetv.py"
 
 cat > "$DESKTOP_ENTRY_FILE" << EOL
 [Desktop Entry]

@@ -183,15 +183,10 @@ class SettingsWindow(QMainWindow):
     def on_startUpBox_stateChanged(self):
         autostart_dir = os.path.dirname(AUTOSTART_FILE)
         script_folder = os.path.dirname(__file__)
-        xdg_current_platform = os.getenv('XDG_CURRENT_DESKTOP', '').lower()
-        use_xcb = xdg_current_platform in ['gnome', 'ubuntu:gnome', 'unity']
-
+        exec_cmd = f"{__file__}"
         if self.ui.startupBox.isChecked():
             os.makedirs(autostart_dir, exist_ok=True)
-            exec_cmd = f"{__file__}"
-            if use_xcb:
-                exec_cmd = f"env QT_QPA_PLATFORM=xcb {exec_cmd}"
-
+            
             with open(AUTOSTART_FILE, 'w') as f:
                 f.write("[Desktop Entry]\n")
                 f.write("Type=Application\n")
