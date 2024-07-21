@@ -1,7 +1,9 @@
 # BigpictureTV-Linux
 
-Python daemon to automate switching from PC to TV when launching Steam in big picture mode.  
+Python daemon to automate switching from PC to TV when launching Steam in big picture mode.
 Supports X11, gnome-wayland and plasma-wayland.
+
+*Looking for the [windows version](https://github.com/Odizinne/BigPictureTV)?*
 
 ![image](assets/screenshot.png)
 
