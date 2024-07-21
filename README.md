@@ -36,4 +36,6 @@ If you plan to switch to HDMI audio, be sure to turn on your HDMI monitor before
 
 I do not recommand going below 100ms for check rate. If unsure, do not edit.
 
+## My titlebar look weird on gnome-wayland
 
+add variable QT_QPA_PLATFORM=xcb
