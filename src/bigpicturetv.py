@@ -249,12 +249,21 @@ class SettingsWindow(QMainWindow):
 
     def validate_commands(self, commands):
         for command in commands:
-            if shutil.which(command) is None:
-                logger.error(f"The required command '{command}' is not installed.")
-                sys.exit(1)
+            if command == 'gnome-randr':
+                command_path = os.path.join(os.path.dirname(__file__), 'gnome-randr')
+                if not os.path.isfile(command_path) or not os.access(command_path, os.X_OK):
+                    logger.error(f"The required command '{command}' is not installed or not executable.")
+                    sys.exit(1)
+            else:
+                if shutil.which(command) is None:
+                    logger.error(f"The required command '{command}' is not installed.")
+                    sys.exit(1)
 
     def generate_screen_command(self, randr_command, output_screen, off_screen, session_type):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         if session_type == "x11" or session_type == "gnome-wayland":
+            if randr_command == "gnome-randr":
+                randr_command = os.path.join(script_dir, 'gnome-randr')
             return [randr_command, '--output', output_screen, '--auto', '--output', off_screen, '--off']
         elif session_type == "kde-wayland":
             return [randr_command, f'output.{output_screen}.enable', f'output.{off_screen}.disable']
@@ -264,7 +273,9 @@ class SettingsWindow(QMainWindow):
             with open(SETTINGS_PATH, 'r') as f:
                 return json.load(f)
         else:
-            return self.create_default_settings()
+            self.create_default_settings()
+            return self.load_settings()
+
 
     def apply_settings(self):
         self.ui.bigPictureKeywords.setText(' '.join(self.settings.get('bigPictureKeywords', [])))
@@ -279,6 +290,7 @@ class SettingsWindow(QMainWindow):
         self.ui.startupBox.setChecked(os.path.exists(AUTOSTART_FILE))
 
     def save_settings(self):
+        print("Saving settings")
         settings = {
             "bigPictureKeywords": self.ui.bigPictureKeywords.text().split(),
             "checkRate": self.ui.checkRate.value(),
@@ -288,26 +300,21 @@ class SettingsWindow(QMainWindow):
             "desktopAdapter": self.ui.desktopAdapter.text(),
             "disableAudio": self.ui.disableAudiobox.isChecked()
         }
+        print(settings)
         os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
         with open(SETTINGS_PATH, 'w') as f:
             json.dump(settings, f, indent=4)
             logger.info("Settings saved to %s", SETTINGS_PATH)
 
     def create_default_settings(self):
+        print("Creating default settings")
         self.show()
-        settings = {
-            "bigPictureKeywords": ["Steam", "Big", "Picture", "mode"],
-            "checkRate": 1000,
-            "gamemodeAudio": "",
-            "desktopAudio": "",
-            "gamemodeAdapter": "",
-            "desktopAdapter": "",
-            "disableAudio": False
-        }
+        self.ui.bigPictureKeywords.setText("Steam Big Picture mode")
+        self.ui.checkRate.setValue(1000)
+        self.ui.disableAudiobox.setChecked(True)
         self.save_settings()
+        #self.load_settings()
         
-        return settings
-
     def monitor_window_changes(self):
         if self.detection_active:
             if self.check_window_names():
