@@ -217,7 +217,6 @@ class SettingsWindow(QMainWindow):
 
     def get_session_type(self):
         session_type = os.getenv("XDG_SESSION_TYPE", "").lower()
-        print(session_type)
 
         if session_type == "x11":
             return "x11"
@@ -293,7 +292,6 @@ class SettingsWindow(QMainWindow):
         self.ui.startupBox.setChecked(os.path.exists(AUTOSTART_FILE))
 
     def save_settings(self):
-        print("Saving settings")
         settings = {
             "bigPictureKeywords": self.ui.bigPictureKeywords.text().split(),
             "checkRate": self.ui.checkRate.value(),
@@ -303,14 +301,12 @@ class SettingsWindow(QMainWindow):
             "desktopAdapter": self.ui.desktopAdapter.text(),
             "disableAudio": self.ui.disableAudiobox.isChecked()
         }
-        print(settings)
         os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
         with open(SETTINGS_PATH, 'w') as f:
             json.dump(settings, f, indent=4)
             logger.info("Settings saved to %s", SETTINGS_PATH)
 
     def create_default_settings(self):
-        print("Creating default settings")
         self.show()
         self.ui.bigPictureKeywords.setText("Steam Big Picture mode")
         self.ui.checkRate.setValue(1000)
