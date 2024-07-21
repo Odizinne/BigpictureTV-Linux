@@ -13,7 +13,7 @@ Supports X11, gnome-wayland and plasma-wayland.
 - `wmctrl` for window detection
 - `pactl` for audio device manipulation
 - `xrandr` for screen detection and manipulation under X11
-- `gnome-randr` (work only with [my custom version](https://github.com/Odizinne/gnome-randr-py)) in path for gnome-wayland support
+- `gnome-randr` (work only with [my custom version](https://github.com/Odizinne/gnome-randr-py), installation will be prompted if running gnome-wayland.)
 - `PyQt6`
 
 ## Installation
