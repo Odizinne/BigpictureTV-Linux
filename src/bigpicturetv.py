@@ -181,21 +181,29 @@ class SettingsWindow(QMainWindow):
         self.save_settings()
 
     def on_startUpBox_stateChanged(self):
+        autostart_dir = os.path.dirname(AUTOSTART_FILE)
+        script_folder = os.path.dirname(__file__)
+        xdg_current_platform = os.getenv('XDG_CURRENT_DESKTOP', '').lower()
+        use_xcb = xdg_current_platform in ['gnome', 'ubuntu:gnome', 'unity']
+
         if self.ui.startupBox.isChecked():
-            autostart_dir = os.path.dirname(AUTOSTART_FILE)
-            script_folder = os.path.dirname(__file__)
             os.makedirs(autostart_dir, exist_ok=True)
+            exec_cmd = f"{__file__}"
+            if use_xcb:
+                exec_cmd = f"env QT_QPA_PLATFORM=xcb {exec_cmd}"
+
             with open(AUTOSTART_FILE, 'w') as f:
                 f.write("[Desktop Entry]\n")
                 f.write("Type=Application\n")
                 f.write("Name=BigPictureTV\n")
                 f.write(f"Path={script_folder}\n")
-                f.write(f"Exec={sys.executable} {__file__}\n")
+                f.write(f"Exec={exec_cmd}\n")
                 logger.info("Autostart enabled.")
         else:
             if os.path.exists(AUTOSTART_FILE):
                 os.remove(AUTOSTART_FILE)
                 logger.info("Autostart disabled.")
+
 
     def check_window_names(self):
         result = subprocess.run(['wmctrl', '-l'], stdout=subprocess.PIPE)
@@ -313,7 +321,6 @@ class SettingsWindow(QMainWindow):
         self.ui.checkRate.setValue(1000)
         self.ui.disableAudiobox.setChecked(True)
         self.save_settings()
-        #self.load_settings()
         
     def monitor_window_changes(self):
         if self.detection_active:

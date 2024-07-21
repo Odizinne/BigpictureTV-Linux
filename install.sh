@@ -33,16 +33,13 @@ if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
                 echo "gnome-randr installation skipped. You may not be able to start BigPictureTV on Wayland Gnome without it."
             fi
 
-            # Update the .desktop file to include QT_QPA_PLATFORM=xcb
             ;;
     esac
 fi
 
 mkdir -p "$DEST_DIR"
-
 cp -r "$SRC_DIR/src/"* "$DEST_DIR/"
 
-# Create or update the desktop entry
 if [[ "$XDG_CURRENT_DESKTOP" == "GNOME" || "$XDG_CURRENT_DESKTOP" == "ubuntu:GNOME" || "$XDG_CURRENT_DESKTOP" == "Unity" ]]; then
     EXEC_CMD="env QT_QPA_PLATFORM=xcb $DEST_DIR/bigpicturetv.py"
 else
