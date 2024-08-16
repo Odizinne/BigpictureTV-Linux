@@ -1,5 +1,7 @@
 # BigpictureTV-Linux
 
+/!\ Discontinued until valve fix ui freeze with AMDGPU [(10793)](https://github.com/ValveSoftware/steam-for-linux/issues/10793) /!\
+
 Python daemon to automate switching from PC to TV when launching Steam in big picture mode.
 Supports X11, gnome-wayland and plasma-wayland.
 
